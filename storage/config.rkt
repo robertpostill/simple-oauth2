@@ -63,6 +63,7 @@
      (set-preference! 'redirect-path "/oauth/authorization")
      (set-preference! 'redirect-ssl-certificate #f)
      (set-preference! 'redirect-ssl-key #f)
+     (set-preference! 'override-uri #f)
      (save-preferences)]
     [else
      (load-preferences)]))

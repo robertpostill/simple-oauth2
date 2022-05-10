@@ -225,7 +225,8 @@
    port
    path
    ssl-certificate
-   ssl-key) #:transparent)
+   ssl-key
+   override-uri) #:transparent)
 
 (define redirect-server
   (make-server-config
@@ -233,19 +234,23 @@
      ['loopback "127.0.0.1"]
      ['localhost "localhost"]
      ['hostname (gethostname)]
-     ['external (get-external-ip)])
+     ['external (get-external-ip)]
+     [_ (get-preference 'redirect-host-type)])
    (get-preference 'redirect-host-port)
    (get-preference 'redirect-path)
    (get-preference 'redirect-ssl-certificate)
-   (get-preference 'redirect-ssl-key)))
+   (get-preference 'redirect-ssl-key)
+   (get-preference 'override-uri)))
 
 (define redirect-server-uri
-  (format "http~a://~a:~a~a"
+  (if (get-preference 'override-uri)
+    (get-preference 'override-uri)
+    (format "http~a://~a:~a~a"
           (if (or (false? (server-config-ssl-certificate redirect-server))
                   (false? (server-config-ssl-key redirect-server))) "" "s")
           (server-config-host redirect-server)
           (server-config-port redirect-server)
-          (server-config-path redirect-server)))
+          (server-config-path redirect-server))))
 
 (define (run-redirect-coordinator)
   (log-oauth2-info "run-redirect-coordinator")
