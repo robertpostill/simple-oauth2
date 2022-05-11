@@ -45,7 +45,8 @@ settings, with their types and default values.
                (list @racket['redirect-host-port] @racket[exact-positive-integer?] @racket[8080])
                (list @racket['redirect-path] @racket[string?] @racket["/oauth/authorization"])
                (list @racket['redirect-ssl-certificate] @racket[(or/c false/c path-string?)] @racket[#f])
-               (list @racket['redirect-ssl-key] @racket[(or/c false/c path-string?)] @racket[#f]))]
+               (list @racket['redirect-ssl-key] @racket[(or/c false/c path-string?)] @racket[#f])
+               (list @racket['override-uri] @racket[(or/c false/c path-string?)] @racket[#f]))]
 
 The values for @racket['cipher-impl], @racket['cipher-key], and @racket['cipher-iv]
 should not be modified by hand. The @racket['cipher-impl] value determines which
@@ -55,6 +56,10 @@ which are used to encrypt/decrypt secrets in the @tt{clients} and @tt{tokens} fi
 The values starting with @racket['redirect-] represent the configuration for the
 internal web server required to host the OAuth redirect URI. The two SSL settings
 are paths to the corresponding files containing the certificate and key.
+
+The values for @racket['override-uri] provides a way for developers to develop behind 
+a proxy, like ngrok.  It allows you to put an arbitary URI in place that sets the 
+callback uri in requests from the web server.
 
 @deftogether[(
   @defproc[(get-current-user-name) string?]
