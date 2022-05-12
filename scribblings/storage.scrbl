@@ -54,8 +54,15 @@ implementation is used to generate the @racket['cipher-key] and @racket['cipher-
 which are used to encrypt/decrypt secrets in the @tt{clients} and @tt{tokens} files.
 
 The values starting with @racket['redirect-] represent the configuration for the
-internal web server required to host the OAuth redirect URI. The two SSL settings
-are paths to the corresponding files containing the certificate and key.
+internal web server required to host the OAuth redirect URI. The 'redirect-host-type
+referrs to the way the hostname is resolved.  It is one of the following values:
+  'loopback 
+  'localhost 
+  'hostname 
+  'external 
+  'proxy 
+Which defines the approach to resolving the name of the computer that is hosting the application.
+The two SSL settings are paths to the corresponding files containing the certificate and key.
 
 The values for @racket['override-uri] provides a way for developers to develop behind 
 a proxy, like ngrok.  It allows you to put an arbitary URI in place that sets the 
