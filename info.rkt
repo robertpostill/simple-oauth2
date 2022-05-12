@@ -21,7 +21,9 @@
     "web-server-lib"
     ;; testing
     "rackunit-lib"
-    "rackunit-spec"))
+    "rackunit-spec"
+    "mock"
+    "mock-rackunit"))
 (define build-deps
   '(;; documentation
     "scribble-lib"

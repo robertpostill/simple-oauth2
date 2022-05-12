@@ -32,7 +32,7 @@
   response-channel)
 
 (define (get-redirect-uri)
-  redirect-server-uri)
+  (redirect-server-uri))
 
 (define (shutdown-redirect-server)
   (channel-put request-channel 'shutdown))
@@ -94,13 +94,13 @@
 
 (define (http-server-thread)
   (cond
-    [(or (false? (server-config-ssl-certificate redirect-server))
-         (false? (server-config-ssl-key redirect-server)))
+    [(or (false? (server-config-ssl-certificate (redirect-server)))
+         (false? (server-config-ssl-key (redirect-server))))
      (log-oauth2-info "starting HTTP server")
      (serve/servlet
       auth-response-servlet
-      #:port (server-config-port redirect-server)
-      #:servlet-path (server-config-path redirect-server)
+      #:port (server-config-port (redirect-server))
+      #:servlet-path (server-config-path (redirect-server))
       #:listen-ip #f
       #:launch-browser? #f
       #:log-file (current-output-port)
@@ -109,11 +109,11 @@
      (log-oauth2-info "starting HTTPS server")
      (serve/servlet
       auth-response-servlet
-      #:port (server-config-port redirect-server)
-      #:servlet-path (server-config-path redirect-server)
+      #:port (server-config-port (redirect-server))
+      #:servlet-path (server-config-path (redirect-server))
       #:listen-ip #f
-      #:ssl-cert (server-config-ssl-certificate redirect-server)
-      #:ssl-key (server-config-ssl-key redirect-server)
+      #:ssl-cert (server-config-ssl-certificate (redirect-server))
+      #:ssl-key (server-config-ssl-key (redirect-server))
       #:launch-browser? #f
       #:log-file (current-output-port)
       #:log-format 'apache-default)]))
@@ -228,29 +228,30 @@
    ssl-key
    override-uri) #:transparent)
 
-(define redirect-server
+(define (redirect-server)
   (make-server-config
    (match (get-preference 'redirect-host-type)
      ['loopback "127.0.0.1"]
      ['localhost "localhost"]
      ['hostname (gethostname)]
      ['external (get-external-ip)]
-     [_ (get-preference 'redirect-host-type)])
+     ['proxy (get-preference 'override-uri)])
    (get-preference 'redirect-host-port)
    (get-preference 'redirect-path)
    (get-preference 'redirect-ssl-certificate)
    (get-preference 'redirect-ssl-key)
    (get-preference 'override-uri)))
 
-(define redirect-server-uri
-  (if (get-preference 'override-uri)
-    (get-preference 'override-uri)
+(define (redirect-server-uri #:preferences-getter [get-preference get-preference]
+                             #:server-config [redirect-server redirect-server])
+  (if (equal? (get-preference 'redirect-host-type) 'proxy)
+    (format "~a~a" (get-preference 'override-uri) (server-config-path (redirect-server)))
     (format "http~a://~a:~a~a"
-          (if (or (false? (server-config-ssl-certificate redirect-server))
-                  (false? (server-config-ssl-key redirect-server))) "" "s")
-          (server-config-host redirect-server)
-          (server-config-port redirect-server)
-          (server-config-path redirect-server))))
+          (if (or (false? (server-config-ssl-certificate (redirect-server)))
+                  (false? (server-config-ssl-key (redirect-server)))) "" "s")
+          (server-config-host (redirect-server))
+          (server-config-port (redirect-server))
+          (server-config-path (redirect-server)))))
 
 (define (run-redirect-coordinator)
   (log-oauth2-info "run-redirect-coordinator")
@@ -260,3 +261,33 @@
      (coordinator))))
 
 (void (run-redirect-coordinator))
+
+(module+ test
+  (require racket/function
+           mock
+           rackunit
+           mock/rackunit) 
+
+  ;; redirect-server-uri
+  (test-case "uses the override uri preference over local config"
+    (define example-uri "https://example.com")
+    (define test-properties (hash 'override-uri example-uri
+                                  'redirect-host-type 'proxy))
+    (define mock-prefs (mock #:behavior (lambda (preference-name)
+                                           (hash-ref test-properties preference-name))))
+    (define mock-server-config (mock #:behavior (const (make-server-config "localhost" "8080" "/oauth/authorization" #t #f #f))))
+    (check-equal? (redirect-server-uri #:preferences-getter mock-prefs #:server-config mock-server-config) (format "~a/oauth/authorization" example-uri)))
+  (test-case "uses the local config to generate a http uri when override-uri is not set"
+    (define test-properties (hash 'override-uri #f
+                                  'redirect-host-type 'localhost))
+    (define mock-prefs (mock #:behavior (lambda (preference-name)
+                                           (hash-ref test-properties preference-name))))
+    (define mock-server-config (mock #:behavior (const (make-server-config "localhost" "8080" "/oauth/authorization" #t #f #f))))
+    (check-equal? (redirect-server-uri #:preferences-getter mock-prefs #:server-config mock-server-config) "http://localhost:8080/oauth/authorization"))
+    (test-case "uses the local config to generate a http uri when override-uri is not set"
+    (define test-properties (hash 'override-uri #f
+                                  'redirect-host-type 'localhost))
+    (define mock-prefs (mock #:behavior (lambda (preference-name)
+                                           (hash-ref test-properties preference-name))))
+    (define mock-server-config (mock #:behavior (const (make-server-config "localhost" "8080" "/oauth/authorization" #t #t #f))))
+    (check-equal? (redirect-server-uri #:preferences-getter mock-prefs #:server-config mock-server-config) "https://localhost:8080/oauth/authorization")))
